@@ -103,8 +103,17 @@ void ImgList::initAllSouth(ImgNode* northwest, unsigned height) {
  *   x dimension.
  */
 unsigned int ImgList::GetDimensionX() const {
-    // replace the following line with your implementation
-    return -1;
+    if (northwest == nullptr) return 0;
+
+    unsigned int count = 0; 
+    ImgNode* current = northwest; 
+
+    while (current != nullptr) {
+        count++;
+        current = current->east; 
+    }
+
+    return count;
 }
 
 /**
@@ -116,8 +125,17 @@ unsigned int ImgList::GetDimensionX() const {
  *   y dimension.
  */
 unsigned int ImgList::GetDimensionY() const {
-    // replace the following line with your implementation
-    return -1;
+    if (southeast == nullptr) return 0;
+
+    unsigned int count = 0; 
+    ImgNode* current = southeast; 
+
+    while (current != nullptr) {
+        count++;
+        current = current->north; 
+    }
+
+    return count;
 }
 
 /**

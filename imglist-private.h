@@ -7,7 +7,5 @@
  *  IF YOU DO NOT HAVE FUNCTIONS TO ADD, LEAVE THIS BLANK
  */
 
-/**************************************/
-/* ADD YOUR PRIVATE DECLARATIONS HERE */
-/**************************************/
-
+// takes the northwest node and the height of the end matrix and creates all westmost row nodes recursively while providing south pointer
+void initAllSouth(ImgNode* northwest, unsigned height);

@@ -20,7 +20,8 @@
  */
 ImgList::ImgList() {
     // set appropriate values for all member attributes here
-	
+    northwest = nullptr;
+    southeast = nullptr;
 }
 
 /**
@@ -29,7 +30,65 @@ ImgList::ImgList() {
  */
 ImgList::ImgList(PNG& img) {
     // build the linked node structure and set the member attributes appropriately
-	
+	unsigned width = img.width();
+    unsigned height = img.height();
+
+    // initialization of the first row
+    northwest = new ImgNode();
+    ImgNode* currFirst = northwest;
+    for (unsigned i = 0; i < width; i++) {
+        if (i == (width - 1)) // when pointer gets to end of row
+            currFirst->colour = *img.getPixel(i, 0);
+        else {
+            currFirst->colour = *img.getPixel(i, 0);
+            currFirst->east = new ImgNode();
+            currFirst->east->west = currFirst; // setting up doubly-link east-west direction
+            currFirst = currFirst->east; // advance pointer eastwards
+        }
+    }
+
+    currFirst = northwest; // resets prev row pointer to first
+    initAllSouth(northwest, height);
+    ImgNode* currRow = northwest->south;
+    for (unsigned y = 1; y < height; y++) {
+        for (unsigned x = 0; x < width; x++) {
+            if (x == (width - 1)) { // end of row
+                currRow->colour = *img.getPixel(x, y);
+                currFirst->south = currRow;
+                currRow->north = currFirst;
+                if (y == (height - 1)) { // last column of last row
+                    southeast = currRow;
+                } else { // think of like typewriter *kaching*!
+                    currRow = northwest->south;
+                    currFirst = northwest;
+                    for (int i = 0; i < y; i++) {
+                        currRow = currRow->south;
+                        currFirst = currFirst->south;
+                    }
+                }
+            } else {
+                currRow->colour = *img.getPixel(x, y);
+                currFirst->south = currRow; // south linkage for first row
+                currRow->north = currFirst; // north
+                currFirst = currFirst->east;
+                currRow->east = new ImgNode(); // east
+                currRow->east->west = currRow; // west-east link
+                currRow = currRow->east;
+            }
+        }
+    }
+}
+
+/**
+ * Initializes all nodes in each row in the first column with only southerly linkage
+ * @pre northwest is initialized and given
+ */
+void ImgList::initAllSouth(ImgNode* northwest, unsigned height) {
+    if (height == 1) // base case; includes the fact northwest node is also in height
+        return;
+    ImgNode* newNode = new ImgNode();
+    northwest->south = newNode;
+    initAllSouth(newNode, height-1);
 }
 
 /************

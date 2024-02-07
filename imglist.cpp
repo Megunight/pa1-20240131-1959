@@ -168,9 +168,46 @@ unsigned int ImgList::GetDimensionFullX() const {
  * using the "distanceTo" function found in RGBAPixel.h.
  */
 ImgNode* ImgList::SelectNode(ImgNode* rowstart, int selectionmode) {
-    // add your implementation below
-  
-    return NULL;
+    if (selectionmode == 0)
+        return minBrightNode(rowstart);
+    else
+        return minColourDifference(rowstart);
+}
+
+ImgNode* ImgList::minBrightNode(ImgNode* rowstart) {
+    unsigned int minBrightness = 766; // because max brightness is 765
+    ImgNode* brightNode = rowstart;
+
+    while (rowstart != NULL) {
+        RGBAPixel pixel = rowstart->colour;
+        unsigned int brightness = pixel.r + pixel.g + pixel.b;
+
+        if (brightness < minBrightness) {
+            minBrightness = brightness;
+            brightNode = rowstart;
+        }
+        rowstart = rowstart->east;
+    }
+    return brightNode;
+}
+
+ImgNode* ImgList::minColourDifference(ImgNode* rowstart) {
+    double leastColourDiff = 7; // because distanceTo outputs in range[0, 3] so 6 is max colour diff
+    ImgNode* leastDiffNode = rowstart;
+
+    while (rowstart != NULL) {
+        RGBAPixel pixel = rowstart->colour;
+        RGBAPixel pixelL = rowstart->west->colour;
+        RGBAPixel pixelR = rowstart->east->colour;
+        double colourDiff = pixel.distanceTo(pixelL) + pixel.distanceTo(pixelR); 
+
+        if (colourDiff < leastColourDiff) {
+            leastColourDiff = colourDiff;
+            leastDiffNode = rowstart;
+        }
+        rowstart = rowstart->east;
+    }
+    return leastDiffNode;
 }
 
 /**

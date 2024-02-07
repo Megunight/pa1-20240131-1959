@@ -146,8 +146,20 @@ unsigned int ImgList::GetDimensionY() const {
  *   x dimension.
  */
 unsigned int ImgList::GetDimensionFullX() const {
-    // replace the following line with your implementation
-    return -1;
+    if (northwest == nullptr) return 0;
+
+    unsigned int originalWidth = 0;
+    ImgNode* current = northwest;
+
+    // Iterate over the top row
+    while (current != nullptr) {
+        originalWidth++; // Count the current node
+        if (current->east != NULL) {
+            originalWidth += current->skipright; 
+        }
+        current = current->east;
+    }
+    return originalWidth;
 }
 
 /**

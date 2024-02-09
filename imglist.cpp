@@ -376,10 +376,14 @@ void ImgList::Carve(int selectionmode) {
         selected = SelectNode(selected, selectionmode);
 
         // west and east nodes
-        selected->west->east = selected->east;
-        selected->west->skipright += 1;
-        selected->east->west = selected->west;
-        selected->east->skipleft += 1;
+        if (selected->west != NULL) {
+            selected->west->east = selected->east;
+            selected->west->skipright += selected->skipright + 1;
+        }
+        if (selected->east != NULL) {
+            selected->east->west = selected->west;
+            selected->east->skipleft += selected->skipleft + 1;
+        }
 
         // north and south nodes
         if (selected->north != NULL) {
@@ -426,7 +430,11 @@ case 4: have to check if skipsouth has >= 1, and then inherit skipsouth value to
  */
 void ImgList::Carve(unsigned int rounds, int selectionmode) {
     // add your implementation here
-	
+	if (rounds > (GetDimensionX() - 2))
+        rounds = GetDimensionX() - 2;
+    
+    for (unsigned int i = 0; i < rounds; i++)
+        Carve(selectionmode);
 }
 
 

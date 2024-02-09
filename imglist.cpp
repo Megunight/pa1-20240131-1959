@@ -450,13 +450,13 @@ void ImgList::Clear() {
     while (currentRow != nullptr) {
         // Traverse the current row and delete all nodes in it.
         ImgNode* currentNode = currentRow;
+        ImgNode* tempSouth = currentRow->south;
         while (currentNode != nullptr) {
             ImgNode* tempEast = currentNode->east; // Save the east node before deleting the current node.
             delete currentNode; // Deallocate the current node.
             currentNode = tempEast; // Move to the next node in the row.
         }
         // Move to the next row.
-        ImgNode* tempSouth = currentRow->south; // Save the south node before the row is entirely deleted.
         currentRow = tempSouth;
     }
     // Reset member attributes to reflect an empty list.

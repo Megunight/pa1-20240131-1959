@@ -187,12 +187,12 @@ ImgNode* ImgList::SelectNode(ImgNode* rowstart, int selectionmode) {
 }
 
 ImgNode* ImgList::minBrightNode(ImgNode* rowstart) {
-    unsigned int minBrightness = 766; // because max brightness is 765
+    double minBrightness = 766; // because max brightness is 765
     ImgNode* brightNode = rowstart;
 
     while (rowstart != NULL) {
         RGBAPixel pixel = rowstart->colour;
-        unsigned int brightness = pixel.r + pixel.g + pixel.b;
+        double brightness = (pixel.r + pixel.g + pixel.b) * pixel.a;
 
         if (brightness < minBrightness) {
             minBrightness = brightness;
@@ -262,9 +262,52 @@ PNG ImgList::Render(bool fillgaps, int fillmode) const {
  *       the size of the gap.
  */
 void ImgList::Carve(int selectionmode) {
-    // add your implementation here
-	
+    unsigned int height = GetDimensionY();
+    std::vector<ImgNode*> rows;
+    ImgNode* yTraverse = northwest;
+    for (unsigned int y = 0; y < height; y++) {
+        rows.push_back(yTraverse);
+        yTraverse = yTraverse->south;
+    }
+
+    for (unsigned int y = 0; y < height; y++) {
+        ImgNode* selected = rows[y];
+        selected = SelectNode(selected, selectionmode);
+
+        // west and east nodes
+        selected->west->east = selected->east;
+        selected->west->skipright += 1;
+        selected->east->west = selected->west;
+        selected->east->skipleft += 1;
+
+        // north and south nodes
+        if (selected->north != NULL) {
+            selected->north->south = selected->south;
+            selected->north->skipdown += selected->skipdown + 1;
+        }
+        if (selected->south != NULL) {
+            selected->south->north = selected->north;
+            selected->south->skipup += selected->skipup + 1;
+        }
+
+        delete selected;
+    }
 }
+
+/*
+TODO: have to get skipnorth and skipsouth as well
+it should be ImgNode* toDelete = selected node using SelectNode, connect all 4 directions, and deleting toDelete?
+get if guards != NULL for north and south, don't do anything but only add skip to it when deleting the actual node
+don't set skip, add to it
+if a node with previous skip values gets deleted, it has to pass the skip along
+
+case 1: have to check north so selected->north won't segfault, but south->n can be reassigned to north
+case 2: have to check south so selected->south won't segfault, but north->s can be reassigned to south
+case 5 & 6: normal
+case 3: have to check if skipnorth has >= 1, and then inherit skipnorth value to south and reassign south->n to north
+case 4: have to check if skipsouth has >= 1, and then inherit skipsouth value to north and reassign north->s to south
+*/
+
 
 // note that a node on the boundary will never be selected for removal
 /**

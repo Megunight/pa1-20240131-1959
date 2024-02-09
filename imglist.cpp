@@ -61,7 +61,7 @@ ImgList::ImgList(PNG& img) {
                 } else { // think of like typewriter *kaching*!
                     currRow = northwest->south;
                     currFirst = northwest;
-                    for (int i = 0; i < y; i++) {
+                    for (unsigned int i = 0; i < y; i++) {
                         currRow = currRow->south;
                         currFirst = currFirst->south;
                     }
@@ -154,9 +154,7 @@ unsigned int ImgList::GetDimensionFullX() const {
     // Iterate over the top row
     while (current != nullptr) {
         originalWidth++; // Count the current node
-        if (current->east != NULL) {
-            originalWidth += current->skipright; 
-        }
+        originalWidth += current->skipright; 
         current = current->east;
     }
     return originalWidth;
@@ -240,12 +238,115 @@ ImgNode* ImgList::minColourDifference(ImgNode* rowstart) {
  *             and the smaller-valued average for diametric hues
  */
 PNG ImgList::Render(bool fillgaps, int fillmode) const {
-    // Add/complete your implementation below
-  
     PNG outpng; //this will be returned later. Might be a good idea to resize it at some point.
-  
-    return outpng;
+
+    unsigned int width = fillgaps ? GetDimensionFullX() : GetDimensionX();
+    unsigned int height = GetDimensionY();
+    outpng.resize(width, height);
+    if (fillgaps == 0) {
+        ImgNode* rowNode = northwest;
+        for (unsigned int y = 0; y < height; y++) {
+            ImgNode* currentNode = rowNode;
+            for (unsigned int x = 0; x < width; x++) {
+                RGBAPixel* pixel = outpng.getPixel(x, y);
+                pixel->r = currentNode->colour.r;
+                pixel->g = currentNode->colour.g;
+                pixel->b = currentNode->colour.b;
+                currentNode = currentNode->east;
+            }
+            rowNode = rowNode->south;
+        }
+        return outpng;
+    } else {
+        ImgNode* rowNode = northwest;
+        for (unsigned int y = 0; y < height; y++) {
+            ImgNode* currentNode = rowNode;
+
+            for (unsigned int x = 0; x < width; x++) {
+                switch (fillmode) {
+                    case 0:
+                        if (currentNode != NULL) {
+                            for (unsigned int gap = 0; gap < currentNode->skipright; gap++) {
+                                RGBAPixel* pixel = outpng.getPixel(x + gap, y);
+                                pixel->r = currentNode->colour.r;
+                                pixel->g = currentNode->colour.g;
+                                pixel->b = currentNode->colour.b;
+                            }
+                            x += currentNode->skipright;
+                            currentNode = currentNode->east;
+                        }
+                        break;
+                }
+            }
+            y += currentNode->skipdown;
+            rowNode = rowNode->south;
+        }
+        return outpng;
+    }
+        
+    // unsigned width = fillgaps ? GetDimensionFullX() : GetDimensionX();
+    // unsigned height = GetDimensionY();
+    // PNG outpng(width, height); // Initialize PNG with correct dimensions
+    
+    // for (unsigned y = 0; y < height; ++y) {
+    //     ImgNode* rowNode = GetRowStartNode(y); // Assuming this method exists to get the start of each row
+    //     unsigned x = 0; // Track the current x position in the output image
+
+    //     while (rowNode != nullptr) {
+    //         // Directly set pixel if there's no gap to fill or if fillgaps is false
+    //         if (!fillgaps || rowNode->east == nullptr || rowNode->skipright == 0) {
+    //             outpng.getPixel(x++, y, rowNode->colour);
+    //         } else {
+    //             // Fill gaps according to fillmode
+    //             unsigned gapWidth = rowNode->skipright;
+    //             RGBAPixel leftColour = rowNode->colour;
+    //             RGBAPixel rightColour = rowNode->east->colour;
+
+    //             for (unsigned i = 0; i <= gapWidth; ++i) {
+    //                 RGBAPixel fillColour;
+    //                 switch (fillmode) {
+    //                     case 0: // Solid, use left node color
+    //                         fillColour = leftColour;
+    //                         break;
+    //                     case 1: // Average color
+    //                         if (i == 0) {
+    //                             fillColour = leftColour;
+    //                         } else if (i == gapWidth) {
+    //                             fillColour = rightColour;
+    //                         } else {
+    //                             fillColour.r = (leftColour.r + rightColour.r) / 2;
+    //                             fillColour.g = (leftColour.g + rightColour.g) / 2;
+    //                             fillColour.b = (leftColour.b + rightColour.b) / 2;
+    //                             fillColour.a = (leftColour.a + rightColour.a) / 2; // Assuming alpha channel
+    //                         }
+    //                         break;
+    //                     case 2: // Linear gradient
+    //                         {
+    //                             float factor = float(i) / (gapWidth + 1);
+    //                             fillColour.r = leftColour.r + factor * (rightColour.r - leftColour.r);
+    //                             fillColour.g = leftColour.g + factor * (rightColour.g - leftColour.g);
+    //                             fillColour.b = leftColour.b + factor * (rightColour.b - leftColour.b);
+    //                             fillColour.a = leftColour.a + factor * (rightColour.a - leftColour.a); // Assuming alpha channel
+    //                         }
+    //                         break;
+    //                 }
+    //                 outpng.getPixel(x++, y, fillColour);
+    //             }
+    //         }
+    //         rowNode = rowNode->east;
+    //     }
+    // }
 }
+
+// ImgNode* ImgList::GetRowStartNode(unsigned y) const {
+//     ImgNode* current = northwest; // Start at the northwest (top-left) corner
+
+//     // Navigate down to the desired row
+//     for (unsigned i = 0; i < y && current != nullptr; i++) {
+//         current = current->south; // Move down one row
+//     }
+//     return current;
+// }
 
 /************
 * MODIFIERS *
@@ -336,8 +437,23 @@ void ImgList::Carve(unsigned int rounds, int selectionmode) {
  *       member attributes have values consistent with an empty list.
  */
 void ImgList::Clear() {
-    // add your implementation here
-	
+    // Start at the top-left corner of the grid.
+    ImgNode* currentRow = northwest;
+    while (currentRow != nullptr) {
+        // Traverse the current row and delete all nodes in it.
+        ImgNode* currentNode = currentRow;
+        while (currentNode != nullptr) {
+            ImgNode* tempEast = currentNode->east; // Save the east node before deleting the current node.
+            delete currentNode; // Deallocate the current node.
+            currentNode = tempEast; // Move to the next node in the row.
+        }
+        // Move to the next row.
+        ImgNode* tempSouth = currentRow->south; // Save the south node before the row is entirely deleted.
+        currentRow = tempSouth;
+    }
+    // Reset member attributes to reflect an empty list.
+    northwest = nullptr;
+    southeast = nullptr;	
 }
 
 /**
@@ -347,7 +463,67 @@ void ImgList::Clear() {
  * @post this list has contents copied from by physically separate from otherlist
  */
 void ImgList::Copy(const ImgList& otherlist) {
-    // add your implementation here
+    if (otherlist.northwest == nullptr) {
+        // otherlist is empty, so this list remains empty as well.
+        northwest = nullptr;
+        southeast = nullptr;
+        return;
+    }
+
+    // Create the first node (top-left corner of the grid).
+    northwest = new ImgNode(*otherlist.northwest);
+    ImgNode* currentRowOther = otherlist.northwest;
+    ImgNode* currentRowThis = northwest;
+    ImgNode* lastNodeThis = nullptr;
+
+    // Iterate over each row in otherlist.
+    while (currentRowOther != nullptr) {
+        ImgNode* currentNodeOther = currentRowOther;
+        ImgNode* currentNodeThis = currentRowThis;
+
+        // Iterate over each node in the current row.
+        while (currentNodeOther != nullptr) {
+            // Copy the current node from otherlist.
+            if (currentNodeThis != currentRowThis) { // Avoid duplicating the first node of the row
+                currentNodeThis = new ImgNode(*currentNodeOther);
+                lastNodeThis->east = currentNodeThis;
+                currentNodeThis->west = lastNodeThis;
+            }
+
+            // Link north-south if not in the first row.
+            if (currentNodeThis->north != nullptr) {
+                currentNodeThis->north->south = currentNodeThis;
+                currentNodeThis->south = currentNodeOther->south ? new ImgNode() : nullptr;
+            }
+
+            // Prepare for next iteration in the row.
+            lastNodeThis = currentNodeThis;
+            currentNodeOther = currentNodeOther->east;
+
+            // Move to the next node.
+            if (currentNodeOther != nullptr) {
+                currentNodeThis->east = new ImgNode();
+                currentNodeThis->east->west = currentNodeThis;
+                currentNodeThis = currentNodeThis->east;
+            }
+        }
+
+        // Prepare for next iteration of row.
+        if (currentRowOther->south != nullptr) {
+            currentRowThis->south = new ImgNode();
+            currentRowThis->south->north = currentRowThis;
+            currentRowThis = currentRowThis->south;
+        }
+
+        // Move down to the next row.
+        currentRowOther = currentRowOther->south;
+    }
+
+    // Find the southeast node (bottom-right corner of the grid).
+    southeast = currentRowThis;
+    while (southeast->east != nullptr) {
+        southeast = southeast->east;
+    }
 	
 }
 

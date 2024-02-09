@@ -21,3 +21,5 @@ takes the node at the start of a row and returns the node with the least colour 
 colour difference being determined by distanceTo function in RGBAPixel.h
 */
 ImgNode* minColourDifference(ImgNode* rowstart);
+
+

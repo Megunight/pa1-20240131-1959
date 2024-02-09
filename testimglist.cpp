@@ -43,6 +43,11 @@ void TestConstructorRender() {
 
         cout << "Attempting to render unmodified list data to output PNG... ";
         PNG outputimg = list3x4.Render(false, 0);
+        for (int x = 0; x < outputimg.width(); x++){
+            for (int y = 0; y < outputimg.height(); y++) {
+                cout << outputimg.getPixel(x, y) << endl;
+            }
+        } 
         cout << "done." << endl;
 
         cout << "Writing output PNG to 3x4-r_0_0.png... ";

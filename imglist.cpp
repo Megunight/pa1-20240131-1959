@@ -36,7 +36,7 @@ ImgList::ImgList(PNG& img) {
     // initialization of the first row
     northwest = new ImgNode();
     ImgNode* currFirst = northwest;
-    for (unsigned i = 0; i < width; i++) {
+    for (unsigned int i = 0; i < width; i++) {
         if (i == (width - 1)) // when pointer gets to end of row
             currFirst->colour = *img.getPixel(i, 0);
         else {
@@ -50,8 +50,8 @@ ImgList::ImgList(PNG& img) {
     currFirst = northwest; // resets prev row pointer to first
     initAllSouth(northwest, height);
     ImgNode* currRow = northwest->south;
-    for (unsigned y = 1; y < height; y++) {
-        for (unsigned x = 0; x < width; x++) {
+    for (unsigned int y = 1; y < height; y++) {
+        for (unsigned int x = 0; x < width; x++) {
             if (x == (width - 1)) { // end of row
                 currRow->colour = *img.getPixel(x, y);
                 currFirst->south = currRow;
@@ -238,115 +238,51 @@ ImgNode* ImgList::minColourDifference(ImgNode* rowstart) {
  *             and the smaller-valued average for diametric hues
  */
 PNG ImgList::Render(bool fillgaps, int fillmode) const {
-    PNG outpng; //this will be returned later. Might be a good idea to resize it at some point.
+    PNG outpng; // This will be returned later. Might be a good idea to resize it at some point.
 
+    // Determine dimensions based on whether gaps should be filled
     unsigned int width = fillgaps ? GetDimensionFullX() : GetDimensionX();
     unsigned int height = GetDimensionY();
-    outpng.resize(width, height);
-    if (fillgaps == 0) {
-        ImgNode* rowNode = northwest;
-        for (unsigned int y = 0; y < height; y++) {
-            ImgNode* currentNode = rowNode;
-            for (unsigned int x = 0; x < width; x++) {
-                RGBAPixel* pixel = outpng.getPixel(x, y);
-                pixel->r = currentNode->colour.r;
-                pixel->g = currentNode->colour.g;
-                pixel->b = currentNode->colour.b;
-                currentNode = currentNode->east;
-            }
-            rowNode = rowNode->south;
-        }
-        return outpng;
-    } else {
-        ImgNode* rowNode = northwest;
-        for (unsigned int y = 0; y < height; y++) {
-            ImgNode* currentNode = rowNode;
+    outpng.resize(width, height); // Resize the output image accordingly
 
-            for (unsigned int x = 0; x < width; x++) {
-                switch (fillmode) {
-                    case 0:
-                        if (currentNode != NULL) {
-                            for (unsigned int gap = 0; gap < currentNode->skipright; gap++) {
-                                RGBAPixel* pixel = outpng.getPixel(x + gap, y);
-                                pixel->r = currentNode->colour.r;
-                                pixel->g = currentNode->colour.g;
-                                pixel->b = currentNode->colour.b;
-                            }
-                            x += currentNode->skipright;
-                            currentNode = currentNode->east;
-                        }
-                        break;
+    ImgNode* rowNode = northwest;
+    for (unsigned int y = 0; y < height; y++) {
+        ImgNode* currNode = rowNode;
+        for (unsigned int x = 0; currNode != nullptr && x < width; x++) {
+            RGBAPixel* pixel = outpng.getPixel(x, y);
+            if (fillgaps && currNode->east != nullptr && currNode->skipright > 0) {
+                for (unsigned int gap = 0; gap <= currNode->skipright && x < width; gap++) {
+                    if (fillmode == 0 || gap == 0) {
+                        *pixel = currNode->colour;
+                    } else if (fillmode == 1) { 
+                        pixel->r = (currNode->colour.r + currNode->east->colour.r) / 2;
+                        pixel->g = (currNode->colour.g + currNode->east->colour.g) / 2;
+                        pixel->b = (currNode->colour.b + currNode->east->colour.b) / 2;
+                        pixel->a = (currNode->colour.a + currNode->east->colour.a) / 2;
+                    } else if (fillmode == 2) { // Mode 2
+                        // Gradient color calculation
+                        double fraction = double(gap) / (currNode->skipright + 1);
+                        pixel->r = currNode->colour.r + fraction * (currNode->east->colour.r - currNode->colour.r);
+                        pixel->g = currNode->colour.g + fraction * (currNode->east->colour.g - currNode->colour.g);
+                        pixel->b = currNode->colour.b + fraction * (currNode->east->colour.b - currNode->colour.b);
+                        pixel->a = currNode->colour.a + fraction * (currNode->east->colour.a - currNode->colour.a);
+                    }
+
+                    if (gap < currNode->skipright) { // Move to next pixel if within a gap
+                        pixel = outpng.getPixel(++x, y);
+                    }
                 }
+                currNode = currNode->east; // Move past the gap
+            } else { // No gap or not filling gaps
+                *pixel = currNode->colour;
+                currNode = currNode->east;
             }
-            y += currentNode->skipdown;
-            rowNode = rowNode->south;
         }
-        return outpng;
+        rowNode = rowNode->south; // Move to the next row
     }
-        
-    // unsigned width = fillgaps ? GetDimensionFullX() : GetDimensionX();
-    // unsigned height = GetDimensionY();
-    // PNG outpng(width, height); // Initialize PNG with correct dimensions
-    
-    // for (unsigned y = 0; y < height; ++y) {
-    //     ImgNode* rowNode = GetRowStartNode(y); // Assuming this method exists to get the start of each row
-    //     unsigned x = 0; // Track the current x position in the output image
 
-    //     while (rowNode != nullptr) {
-    //         // Directly set pixel if there's no gap to fill or if fillgaps is false
-    //         if (!fillgaps || rowNode->east == nullptr || rowNode->skipright == 0) {
-    //             outpng.getPixel(x++, y, rowNode->colour);
-    //         } else {
-    //             // Fill gaps according to fillmode
-    //             unsigned gapWidth = rowNode->skipright;
-    //             RGBAPixel leftColour = rowNode->colour;
-    //             RGBAPixel rightColour = rowNode->east->colour;
-
-    //             for (unsigned i = 0; i <= gapWidth; ++i) {
-    //                 RGBAPixel fillColour;
-    //                 switch (fillmode) {
-    //                     case 0: // Solid, use left node color
-    //                         fillColour = leftColour;
-    //                         break;
-    //                     case 1: // Average color
-    //                         if (i == 0) {
-    //                             fillColour = leftColour;
-    //                         } else if (i == gapWidth) {
-    //                             fillColour = rightColour;
-    //                         } else {
-    //                             fillColour.r = (leftColour.r + rightColour.r) / 2;
-    //                             fillColour.g = (leftColour.g + rightColour.g) / 2;
-    //                             fillColour.b = (leftColour.b + rightColour.b) / 2;
-    //                             fillColour.a = (leftColour.a + rightColour.a) / 2; // Assuming alpha channel
-    //                         }
-    //                         break;
-    //                     case 2: // Linear gradient
-    //                         {
-    //                             float factor = float(i) / (gapWidth + 1);
-    //                             fillColour.r = leftColour.r + factor * (rightColour.r - leftColour.r);
-    //                             fillColour.g = leftColour.g + factor * (rightColour.g - leftColour.g);
-    //                             fillColour.b = leftColour.b + factor * (rightColour.b - leftColour.b);
-    //                             fillColour.a = leftColour.a + factor * (rightColour.a - leftColour.a); // Assuming alpha channel
-    //                         }
-    //                         break;
-    //                 }
-    //                 outpng.getPixel(x++, y, fillColour);
-    //             }
-    //         }
-    //         rowNode = rowNode->east;
-    //     }
-    // }
+    return outpng;
 }
-
-// ImgNode* ImgList::GetRowStartNode(unsigned y) const {
-//     ImgNode* current = northwest; // Start at the northwest (top-left) corner
-
-//     // Navigate down to the desired row
-//     for (unsigned i = 0; i < y && current != nullptr; i++) {
-//         current = current->south; // Move down one row
-//     }
-//     return current;
-// }
 
 /************
 * MODIFIERS *
@@ -363,6 +299,30 @@ PNG ImgList::Render(bool fillgaps, int fillmode) const {
  *       the size of the gap.
  */
 void ImgList::Carve(int selectionmode) {
+
+if (northwest == nullptr) return; // Check for an empty list
+
+    // add your implementation here
+    if (northwest == nullptr) return; // Empty list check
+
+    ImgNode* currentRowStart = northwest;
+    while (currentRowStart != nullptr) {
+        ImgNode* nodeToRemove = SelectNode(currentRowStart, selectionmode);
+        if (nodeToRemove != nullptr && nodeToRemove->east != nullptr && nodeToRemove->west != nullptr) {
+            // Update the east pointer of the western neighbor
+            nodeToRemove->west->east = nodeToRemove->east;
+            // Update the west pointer of the eastern neighbor
+            nodeToRemove->east->west = nodeToRemove->west;
+            // Update skip values if needed
+            nodeToRemove->west->skipright += 1 + nodeToRemove->skipright;
+            nodeToRemove->east->skipleft += 1 + nodeToRemove->skipleft;
+
+            // Finally, delete the node
+            delete nodeToRemove;
+        }
+        // Move to the first node of the next row
+        currentRowStart = currentRowStart->south;
+    }
     unsigned int height = GetDimensionY();
     std::vector<ImgNode*> rows;
     ImgNode* yTraverse = northwest;
@@ -379,6 +339,7 @@ void ImgList::Carve(int selectionmode) {
         if (selected->west != NULL) {
             selected->west->east = selected->east;
             selected->west->skipright += selected->skipright + 1;
+
         }
         if (selected->east != NULL) {
             selected->east->west = selected->west;
@@ -399,21 +360,6 @@ void ImgList::Carve(int selectionmode) {
     }
 }
 
-/*
-TODO: have to get skipnorth and skipsouth as well
-it should be ImgNode* toDelete = selected node using SelectNode, connect all 4 directions, and deleting toDelete?
-get if guards != NULL for north and south, don't do anything but only add skip to it when deleting the actual node
-don't set skip, add to it
-if a node with previous skip values gets deleted, it has to pass the skip along
-
-case 1: have to check north so selected->north won't segfault, but south->n can be reassigned to north
-case 2: have to check south so selected->south won't segfault, but north->s can be reassigned to south
-case 5 & 6: normal
-case 3: have to check if skipnorth has >= 1, and then inherit skipnorth value to south and reassign south->n to north
-case 4: have to check if skipsouth has >= 1, and then inherit skipsouth value to north and reassign north->s to south
-*/
-
-
 // note that a node on the boundary will never be selected for removal
 /**
  * Removes "rounds" number of nodes (up to a maximum of node width - 2) from each row,
@@ -429,8 +375,7 @@ case 4: have to check if skipsouth has >= 1, and then inherit skipsouth value to
  *       the size of the gap.
  */
 void ImgList::Carve(unsigned int rounds, int selectionmode) {
-    // add your implementation here
-	if (rounds > (GetDimensionX() - 2))
+    if (rounds > (GetDimensionX() - 2))
         rounds = GetDimensionX() - 2;
     
     for (unsigned int i = 0; i < rounds; i++)
@@ -538,4 +483,3 @@ void ImgList::Copy(const ImgList& otherlist) {
 /*************************************************************************************************
 * IF YOU DEFINED YOUR OWN PRIVATE FUNCTIONS IN imglist-private.h, YOU MAY ADD YOUR IMPLEMENTATIONS BELOW *
 *************************************************************************************************/
-
